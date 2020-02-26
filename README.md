@@ -1,2 +1,11 @@
-# vm_translator
-HACK "VM translator" suggested in 'The Elements of Computing Systems' (Ruby implementations)
+This is the training repository for vm translator on HACK platform (implelmented by Ruby).
+
+Origial ideas of HACK architecture are given by:
+
+## The Elements of Computing Systems
+### chapter 7-8 (implementation of virtual machine)
+- basic ideas/tools are introduced at:
+https://www.nand2tetris.org/
+
+- see the publisher's link for datails:
+http://mitpress.mit.edu/books/elements-computing-systems https://www.oreilly.co.jp/books/9784873117126/
