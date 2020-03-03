@@ -49,8 +49,16 @@ class Parser
     raise StandardError if @current_command_type == 'C_RETURN'
 
     return @current_command.slice(/^\S+/) if @current_command_type == 'C_ARITHMETIC'
-    #TODO: ここからやる。第１引数を返す正規表現を考え中
-    return
+
+    arg = @current_command.gsub(/^\S+\s/, '')
+    arg.slice(/^\S+/)
+  end
+
+  def arg2
+    raise StandardError if @current_command_type == 'C_ARITHMETIC' || @current_command_type == 'C_LABEL' || @current_command_type == 'C_GOTO' || @current_command_type == 'C_IF' || @current_command_type == 'C_RETURN'
+
+    arg = @current_command.gsub(/^\S+\s/, '').gsub(/^\S+\s/, '')
+    arg.slice(/^\S+/)
   end
 
   private
@@ -62,5 +70,3 @@ class Parser
                                      .reject(&:empty?)
   end
 end
-
-parser = Parser.new(ARGV[0])
