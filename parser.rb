@@ -1,4 +1,5 @@
 class Parser
+  # TODO: ディレクトリが渡された時に対応できるようにする
   def initialize(vm_file)
     arr = File.open(vm_file).readlines
     @target_lines = trim(arr)

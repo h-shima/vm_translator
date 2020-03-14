@@ -1,4 +1,5 @@
 class CodeWriter
+  # TODO: ディレクトリが渡された時に対応できるようにする
   def initialize(filename)
     @label_name = ''
     @label_counter = 0
@@ -385,11 +386,247 @@ class CodeWriter
           @SP
           M = M + 1
         ASSEMBLY
-      else
-        # TODO: constant以外の実装
+      when 'local'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          @LCL
+          D = M
+          @#{index}
+          D = D + A
+          A = D
+          D = M
+          @SP
+          A = M
+          M = D
+          @SP
+          M = M + 1
+        ASSEMBLY
+      when 'argument'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          @ARG
+          D = M
+          @#{index}
+          D = D + A
+          A = D
+          D = M
+          @SP
+          A = M
+          M = D
+          @SP
+          M = M + 1
+        ASSEMBLY
+      when 'this'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          @THIS
+          D = M
+          @#{index}
+          D = D + A
+          A = D
+          D = M
+          @SP
+          A = M
+          M = D
+          @SP
+          M = M + 1
+        ASSEMBLY
+      when 'that'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          @THAT
+          D = M
+          @#{index}
+          D = D + A
+          A = D
+          D = M
+          @SP
+          A = M
+          M = D
+          @SP
+          M = M + 1
+        ASSEMBLY
+      when 'temp'
+        # 5 + index のメモリアドレスに入っている値をスタックにプッシュする
+        @assembly += <<~"ASSEMBLY".chomp
+
+          @#{5 + index.to_i}
+          D = M
+          @SP
+          A = M
+          M = D
+          @SP
+          M = M + 1
+        ASSEMBLY
+      when 'pointer'
+        # 3 + index のメモリアドレスに入っている値をスタックにプッシュする
+        @assembly += <<~"ASSEMBLY".chomp
+
+          @#{3 + index.to_i}
+          D = M
+          @SP
+          A = M
+          M = D
+          @SP
+          M = M + 1
+        ASSEMBLY
+      when 'static'
+        # ファイル名.(staticの引数)の数字のラベルの中に入ってる値をポインタとした時のメモリの値をスタックにPUSHする
+        @assembly += <<~"ASSEMBLY".chomp
+
+          @#{@filename}.#{index}
+          D = M
+          @SP
+          A = M
+          M = D
+          @SP
+          M = M + 1
+        ASSEMBLY
       end
     elsif command == 'C_POP'
-      # TODO: 実装する
+      # NOTE: constantはpushだけなので実装いらない
+      case segment
+      when 'local'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          // LCL + indexの指す メモリアドレスを求めて R15に入れる
+          @LCL
+          D = M
+          @#{index}
+          D = D + A
+          @R15
+          M = D
+
+          // LCL + index　の指すメモリアドレスに、スタックの一番上の値を入れる
+          @SP
+          M = M - 1
+
+          @SP
+          A = M
+          D = M
+          @R14
+          M = D
+
+          @R14
+          D = M
+          @R15
+          A = M
+          M = D
+        ASSEMBLY
+      when 'argument'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          // ARG + indexの指す メモリアドレスを求めて R15に入れる
+          @ARG
+          D = M
+          @#{index}
+          D = D + A
+          @R15
+          M = D
+
+          // ARG + index　の指すメモリアドレスに、スタックの一番上の値を入れる
+          @SP
+          M = M - 1
+
+          @SP
+          A = M
+          D = M
+          @R14
+          M = D
+
+          @R14
+          D = M
+          @R15
+          A = M
+          M = D
+        ASSEMBLY
+      when 'this'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          // THIS + indexの指す メモリアドレスを求めて R15に入れる
+          @THIS
+          D = M
+          @#{index}
+          D = D + A
+          @R15
+          M = D
+
+          // THIS + index　の指すメモリアドレスに、スタックの一番上の値を入れる
+          @SP
+          M = M - 1
+
+          @SP
+          A = M
+          D = M
+          @R14
+          M = D
+
+          @R14
+          D = M
+          @R15
+          A = M
+          M = D
+        ASSEMBLY
+      when 'that'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          // THAT + indexの指す メモリアドレスを求めて R15に入れる
+          @THAT
+          D = M
+          @#{index}
+          D = D + A
+          @R15
+          M = D
+
+          // THAT + index　の指すメモリアドレスに、スタックの一番上の値を入れる
+          @SP
+          M = M - 1
+
+          @SP
+          A = M
+          D = M
+          @R14
+          M = D
+
+          @R14
+          D = M
+          @R15
+          A = M
+          M = D
+        ASSEMBLY
+      when 'temp'
+        # 5 + index のメモリアドレスにスタックの一番上の値を入れる
+        @assembly += <<~"ASSEMBLY".chomp
+        
+          @SP
+          M = M - 1
+          A = M
+          D = M
+          @#{5 + index.to_i }
+          M = D
+        ASSEMBLY
+      when 'pointer'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          // スタックの先頭の値をRAM[3] or RAM[4] に代入する
+          @SP
+          M = M - 1
+          A = M
+          D = M
+          @#{3 + index.to_i}
+          M = D
+        ASSEMBLY
+      when 'static'
+        @assembly += <<~"ASSEMBLY".chomp
+
+          @SP
+          M = M - 1
+          A = M
+          D = M
+          @#{@filename}.#{index}
+          M = D
+        ASSEMBLY
+      end
     end
   end
 
