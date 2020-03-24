@@ -630,6 +630,38 @@ class CodeWriter
     end
   end
 
+  # TODO: あとで実装する
+  def write_init; end
+
+  def write_label(label)
+    @assembly += <<~"ASSEMBLY".chomp
+
+      (#{label})
+    ASSEMBLY
+  end
+
+  def write_goto(label)
+    @assembly += <<~"ASSEMBLY".chomp
+
+      @#{label}
+      0;JMP
+    ASSEMBLY
+  end
+
+  def write_if(label)
+    @assembly += <<~"ASSEMBLY".chomp
+
+      @SP
+      M = M - 1
+      A = M
+      D = M
+      @#{label}
+      D;JNE
+    ASSEMBLY
+  end
+
+  # TODO: write_callなどの関数呼び出し系のwriterを書くこと
+
   def close
     update_label
 

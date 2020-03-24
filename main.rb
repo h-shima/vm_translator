@@ -23,6 +23,18 @@ while parser.has_more_commands?
     index   = parser.arg2
 
     code_writer.write_push_pop(command, segment, index)
+  elsif command == 'C_LABEL'
+    label = parser.arg1
+
+    code_writer.write_label(label)
+  elsif command == 'C_GOTO'
+    label = parser.arg1
+
+    code_writer.write_goto(label)
+  elsif command == 'C_IF'
+    label = parser.arg1
+
+    code_writer.write_if(label)
   else
     # ここに他のコマンドだった時の処理を書くべきだが7章では一旦保留
   end
