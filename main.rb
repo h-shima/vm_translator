@@ -35,8 +35,18 @@ while parser.has_more_commands?
     label = parser.arg1
 
     code_writer.write_if(label)
-  else
-    # ここに他のコマンドだった時の処理を書くべきだが7章では一旦保留
+  elsif command == 'C_FUNCTION'
+    function_name = parser.arg1
+    num_locals    = parser.arg2
+
+    code_writer.write_function(function_name, num_locals)
+  elsif command == 'C_CALL'
+    function_name = parser.arg1
+    num_args      = parser.arg2
+
+    code_writer.write_call(function_name, num_args)
+  elsif command == 'C_RETURN'
+    code_writer.write_return
   end
 end
 
