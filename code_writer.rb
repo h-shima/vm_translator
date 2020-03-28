@@ -842,20 +842,8 @@ class CodeWriter
     ASSEMBLY
   end
 
-
-  def close
-    update_label
-
-    @assembly += <<~"ASSEMBLY".chomp
-      // アセンブリファイルの終了を明示する
-      (#{label_name}_file_end)
-      @#{label_name}_file_end
-      0;JMP
-    ASSEMBLY
-
-    File.open("./#{@filename}.asm", 'w') do |file|
-      file.puts @assembly
-    end
+  def return_assembly
+    @assembly
   end
 
   private
@@ -864,7 +852,7 @@ class CodeWriter
   def update_label
     @label_counter += 1
 
-    @label_name = "$_#{@label_counter}"
+    @label_name = "$_#{@filename}_#{@label_counter}"
   end
 
   def label_name
@@ -874,7 +862,7 @@ class CodeWriter
   def update_loop
     @loop_counter += 1
 
-    @loop_name = "$_loop_#{@loop_counter}"
+    @loop_name = "$_loop_#{@filename}_#{@loop_counter}"
   end
 
   def loop_name
@@ -883,6 +871,5 @@ class CodeWriter
 
   def return_address(identifier)
     "$_return_address_#{identifier}"
-
   end
 end
