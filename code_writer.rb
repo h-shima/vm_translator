@@ -3,6 +3,8 @@ class CodeWriter
   def initialize(filename)
     @label_name = ''
     @label_counter = 0
+    @loop_name = ''
+    @loop_counter = 0
     @assembly = ''
     # パスの後ろから最初に出てくるスラッシュまでを抜き、そこから.vmを抜く
     @filename = File.basename(filename).gsub('.vm', '')
@@ -630,19 +632,218 @@ class CodeWriter
     end
   end
 
-  def close
+  # TODO: あとで実装する
+  def write_init; end
+
+  def write_label(label)
+    @assembly += <<~"ASSEMBLY".chomp
+
+      (#{label})
+    ASSEMBLY
+  end
+
+  def write_goto(label)
+    @assembly += <<~"ASSEMBLY".chomp
+
+      @#{label}
+      0;JMP
+    ASSEMBLY
+  end
+
+  def write_if(label)
+    @assembly += <<~"ASSEMBLY".chomp
+
+      @SP
+      M = M - 1
+      A = M
+      D = M
+      @#{label}
+      D;JNE
+    ASSEMBLY
+  end
+
+  def write_function(function_name, num_locals)
+    update_label
+    update_loop
+
+    @assembly += <<~"ASSEMBLY".chomp
+
+      (#{function_name})
+      // ローカル変数を全て0で初期化する
+      @#{num_locals}
+      D = A
+      @R15
+      M = D
+      
+      // すべて0で初期化し終わったら処理を終了する
+      (#{label_name})
+      @R15
+      D = M
+      @#{loop_name}
+      D;JEQ
+
+      @SP
+      A = M
+      M = 0
+
+      @SP
+      M = M + 1
+
+      @R15
+      M = M - 1
+      @#{label_name}
+      0;JMP
+
+      (#{loop_name})
+    ASSEMBLY
+  end
+
+  def write_call(function_name, num_args)
     update_label
 
     @assembly += <<~"ASSEMBLY".chomp
-      // アセンブリファイルの終了を明示する
-      (#{label_name}_file_end)
-      @#{label_name}_file_end
+    
+      // スタックの先頭にリターンアドレスを設定する
+      @#{label_name}
+      D = A
+      @SP
+      A = M
+      M = D
+      @SP
+      M = M + 1
+
+      // 関数呼び出し側のLCLをスタックに格納する
+      @LCL
+      D = M
+      @SP
+      A = M
+      M = D
+      @SP
+      M = M + 1
+
+      // 関数呼び出し側のARGをスタックに格納する
+      @ARG
+      D = M
+      @SP
+      A = M
+      M = D
+      @SP
+      M = M + 1
+
+      // 関数呼び出し側のTHISをスタックに格納する
+      @THIS
+      D = M
+      @SP
+      A = M
+      M = D
+      @SP
+      M = M + 1
+
+      // 関数呼び出し側のTHATをスタックに格納する
+      @THAT
+      D = M
+      @SP
+      A = M
+      M = D
+      @SP
+      M = M + 1
+
+      // 呼び出される側の関数のために、ARG（引数のベースアドレス）を移動する
+      @5
+      D = A
+      @#{num_args}
+      D = A + D
+      @SP
+      D = M - D
+      @ARG
+      M = D
+
+      // 呼び出される側の関数のために、LCL（ローカル変数のベースアドレス）をスタックポインタと同じ位置に移動する
+      @SP
+      D = M
+      @LCL
+      M = D
+
+      // 呼び出される側の関数に制御を移す
+      @#{function_name}
+      0;JMP
+
+      (#{label_name})
+    ASSEMBLY
+  end
+
+  def write_return
+    @assembly += <<~"ASSEMBLY".chomp
+    
+      // 一時的にLCLポインタをR15に保存 R15は関数の呼び出し側のポインタを戻す時の起点となる（P179参照）
+      @LCL
+      D = M
+      @R15
+      M = D
+
+      // リターンアドレスを取得してR14に保存
+      @5
+      D = A
+      @R15
+      D = M - D
+      @R14
+      M = D
+
+      // 関数の呼び出し側のために、関数の戻り値をスタックの先頭から取ってきて別の場所へ移す
+      @SP
+      A = M - 1
+      D = M
+      @ARG
+      A = M
+      M = D
+
+      // 関数呼び出し側のSPを戻す
+      @ARG
+      D = M
+      @SP
+      M = D + 1
+
+     // 関数呼び出し側のTHATを戻す
+      @R15
+      M = M - 1
+      A = M
+      D = M
+      @THAT
+      M = D
+
+      // 関数呼び出し側のTHISを戻す
+      @R15
+      M = M - 1
+      A = M
+      D = M
+      @THIS
+      M = D
+
+      // 関数呼び出し側のARGを戻す
+      @R15
+      M = M - 1
+      A = M
+      D = M
+      @ARG
+      M = D
+
+      // 関数呼び出し側のLCLを戻す
+      @R15
+      M = M - 1
+      A = M
+      D = M
+      @LCL
+      M = D
+
+      // リターンアドレスへ移動する（呼び出し側のコードへ戻る）
+      @R14
+      A = M
       0;JMP
     ASSEMBLY
+  end
 
-    File.open("./#{@filename}.asm", 'w') do |file|
-      file.puts @assembly
-    end
+  def return_assembly
+    @assembly
   end
 
   private
@@ -651,10 +852,24 @@ class CodeWriter
   def update_label
     @label_counter += 1
 
-    @label_name = "$_#{@label_counter}"
+    @label_name = "$_#{@filename}_#{@label_counter}"
   end
 
   def label_name
     @label_name
+  end
+
+  def update_loop
+    @loop_counter += 1
+
+    @loop_name = "$_loop_#{@filename}_#{@loop_counter}"
+  end
+
+  def loop_name
+    @loop_name
+  end
+
+  def return_address(identifier)
+    "$_return_address_#{identifier}"
   end
 end
